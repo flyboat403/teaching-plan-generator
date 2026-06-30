@@ -1,0 +1,7 @@
+# Generated teaching plan outputs
+*_教学设计.md
+*_教学设计.docx
+
+# Python
+__pycache__/
+*.pyc
