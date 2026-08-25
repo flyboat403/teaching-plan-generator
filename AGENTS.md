@@ -82,7 +82,7 @@ If teacher provides reference materials, classify as A (content doc), B (existin
 
 ## Quality self-check (after every generation)
 
-Verify all 10 items from SKILL.md § Quality Checklist. Key ones agents commonly miss:
+Verify all 11 items from SKILL.md § Quality Checklist. Key ones agents commonly miss:
 
 - [ ] Time sum = 40 min exactly
 - [ ] Each module has exactly 1 core knowledge point
