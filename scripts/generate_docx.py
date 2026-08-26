@@ -39,6 +39,7 @@ from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 
 
 # ── styles ──────────────────────────────────────────────────
@@ -57,7 +58,12 @@ def _set_run_font(run, font_name, size, bold=False):
     run.font.name = font_name
     run.font.size = size
     run.bold = bold
-    run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+    rPr = run._element.get_or_add_rPr()
+    rFonts = rPr.find(qn("w:rFonts"))
+    if rFonts is None:
+        rFonts = OxmlElement("w:rFonts")
+        rPr.append(rFonts)
+    rFonts.set(qn("w:eastAsia"), font_name)
 
 
 def _add_styled_para(doc, text, font=FONT_BODY, size=SIZE_BODY, bold=False,
@@ -88,11 +94,20 @@ def _add_heading_styled(doc, text):
 
 def _rebuild_table_row(row, values, bold=False):
     """Replace cell text in a table row."""
+    if not isinstance(values, list):
+        raise ValueError(f'表格行必须是数组，实得 {type(values).__name__}: {values!r}')
+    if len(values) != len(row.cells):
+        raise ValueError(f'表格行列数不匹配: 该行应有 {len(row.cells)} 列, 实得 {len(values)} 列: {values}')
     font = FONT_TABLE_H if bold else FONT_TABLE
     for i, val in enumerate(values):
         cell = row.cells[i]
-        cell.text = ''
+        # 真正清空单元格：python-docx 的 cell.text="" 只设置第一个段落，
+        # 旧 run 会残留导致字体/内容串线，必须显式删除
+        for extra_p in cell.paragraphs[1:]:
+            extra_p._element.getparent().remove(extra_p._element)
         p = cell.paragraphs[0]
+        for old_run in list(p.runs):
+            old_run._element.getparent().remove(old_run._element)
         p.paragraph_format.space_before = Pt(2)
         p.paragraph_format.space_after = Pt(2)
         run = p.add_run(str(val))
@@ -101,6 +116,8 @@ def _rebuild_table_row(row, values, bold=False):
 
 def _add_table(doc, header, rows):
     """Add a formatted table with header row."""
+    if not header:
+        raise ValueError('表格 header 不能为空')
     table = doc.add_table(rows=1 + len(rows), cols=len(header))
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.style = 'Table Grid'
@@ -117,10 +134,12 @@ def _render_content(doc, content):
         for item in content:
             _render_content(doc, item)
     elif isinstance(content, dict):
-        text = content.get('text', '')
-        bold = content.get('bold', False)
-        indent = content.get('indent', True)
+        text = content.get('text') or ''
+        bold = bool(content.get('bold', False))
+        indent = bool(content.get('indent', True))
         _add_styled_para(doc, text, bold=bold, indent=indent)
+    else:
+        raise ValueError('不支持的 content 类型: %s (值: %r)' % (type(content).__name__, content))
 
 
 def generate(data, output_path):
@@ -139,27 +158,38 @@ def generate(data, output_path):
     fields = data.get('fields', [])
 
     for i, field in enumerate(fields):
+        if not isinstance(field, dict):
+            raise ValueError(f'fields[{i}] 必须是对象，实得 {type(field).__name__}')
         heading = field.get('heading', '')
+        if not isinstance(heading, str):
+            raise ValueError(f'fields[{i}].heading 必须是字符串，实得 {type(heading).__name__}：{heading!r}')
         content = field.get('content', '')
         ctype   = field.get('type', 'text')
 
         if i == 0:
-            # First field heading is the document title
-            title_text = heading.replace('一、', '').replace('课程名称', '').strip()
-            # Use title from data if provided
-            _add_title(doc, data.get('title', heading))
+            title = data.get('title') or heading
+            if not isinstance(title, str):
+                raise ValueError(f'title 必须是字符串，实得 {type(title).__name__}：{title!r}')
+            _add_title(doc, title)
+
             _add_heading_styled(doc, heading)
         else:
             _add_heading_styled(doc, heading)
 
+        if ctype not in ('text', 'tables'):
+            raise ValueError(f'不支持的 type: {ctype!r}（仅支持 text / tables）')
         if ctype == 'tables':
             for tbl in content:
+                if not isinstance(tbl, dict) or not isinstance(tbl.get('rows'), list):
+                    raise ValueError('tables 的每个元素必须是包含 rows 数组的对象: %r' % (tbl,))
                 _add_table(doc, tbl.get('header', []), tbl.get('rows', []))
             # Add blank paragraph after tables
             _add_styled_para(doc, '')
         else:
             _render_content(doc, content)
 
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(out_dir, exist_ok=True)
     doc.save(output_path)
     size_kb = round(os.path.getsize(output_path) / 1024, 1)
     print(f'DOCX saved: {output_path} ({size_kb} KB)')
@@ -173,10 +203,23 @@ if __name__ == '__main__':
     input_path = sys.argv[1]
     output_path = sys.argv[2] if len(sys.argv) > 2 else input_path.replace('.json', '.docx')
 
-    with open(input_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print('错误: 找不到输入文件 ' + input_path); sys.exit(1)
+    except json.JSONDecodeError as e:
+        print('错误: JSON 非法 (%s, 第%d行第%d列)，请核对 Output Format Spec' % (e.msg, e.lineno, e.colno)); sys.exit(1)
+
+    if not isinstance(data, dict) or not isinstance(data.get('fields'), list) or not data['fields']:
+        print('错误: fields 必须是包含至少一个元素的对象数组'); sys.exit(1)
 
     if 'output_path' in data and len(sys.argv) <= 2:
         output_path = data['output_path']
+    if not isinstance(output_path, str) or not output_path:
+        print('错误: output_path 必须是字符串'); sys.exit(1)
 
-    generate(data, output_path)
+    try:
+        generate(data, output_path)
+    except ValueError as e:
+        print('错误: ' + str(e)); sys.exit(1)
