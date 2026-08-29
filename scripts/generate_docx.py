@@ -27,7 +27,8 @@ Input JSON structure:
     "output_path": "output.docx"  (optional, can be 2nd argv)
 }
 
-content types:
+content types (the 'type' field is OPTIONAL - it is inferred from the
+content shape, and must not contradict it when present):
   - "text" (default): string or array of {text, bold, indent} dicts
   - "tables": array of {header, rows}
 """
@@ -126,6 +127,30 @@ def _add_table(doc, header, rows):
         _rebuild_table_row(table.rows[r_idx + 1], row)
 
 
+def _is_table_spec(obj):
+    """Table spec: a dict carrying a list 'rows' and a 'header' list."""
+    return (isinstance(obj, dict)
+            and isinstance(obj.get('rows'), list)
+            and isinstance(obj.get('header'), list))
+
+
+def _detect_content_type(content):
+    """Infer the content shape so callers may omit 'type'.
+
+    - string / list of paragraph dicts  -> 'text'
+    - list of {header, rows} dicts      -> 'tables'
+    Raises ValueError when the shape is ambiguous or unknown, so a
+    malformed field fails loudly instead of rendering as empty text.
+    """
+    if isinstance(content, str):
+        return 'text'
+    if isinstance(content, list):
+        if any(_is_table_spec(item) for item in content):
+            return 'tables'
+        return 'text'
+    raise ValueError('不支持的 content 类型: %s (值: %r)' % (type(content).__name__, content))
+
+
 def _render_content(doc, content):
     """Render a single content item: plain text or nested list."""
     if isinstance(content, str):
@@ -134,7 +159,9 @@ def _render_content(doc, content):
         for item in content:
             _render_content(doc, item)
     elif isinstance(content, dict):
-        text = content.get('text') or ''
+        if 'text' not in content:
+            raise ValueError('text 段落缺少 text 字段: %r' % (content,))
+        text = content['text'] or ''
         bold = bool(content.get('bold', False))
         indent = bool(content.get('indent', True))
         _add_styled_para(doc, text, bold=bold, indent=indent)
@@ -164,7 +191,7 @@ def generate(data, output_path):
         if not isinstance(heading, str):
             raise ValueError(f'fields[{i}].heading 必须是字符串，实得 {type(heading).__name__}：{heading!r}')
         content = field.get('content', '')
-        ctype   = field.get('type', 'text')
+        ctype   = field.get('type', None)
 
         if i == 0:
             title = data.get('title') or heading
@@ -176,8 +203,13 @@ def generate(data, output_path):
         else:
             _add_heading_styled(doc, heading)
 
-        if ctype not in ('text', 'tables'):
+        detected = _detect_content_type(content)
+        if ctype is None:
+            ctype = detected
+        elif ctype not in ('text', 'tables'):
             raise ValueError(f'不支持的 type: {ctype!r}（仅支持 text / tables）')
+        elif ctype != detected:
+            raise ValueError(f'fields[{i}] ({heading!r}) 的 type={ctype!r} 与内容实际形状 {detected!r} 不一致，请检查 JSON')
         if ctype == 'tables':
             for tbl in content:
                 if not isinstance(tbl, dict) or not isinstance(tbl.get('rows'), list):
@@ -204,7 +236,7 @@ if __name__ == '__main__':
     output_path = sys.argv[2] if len(sys.argv) > 2 else input_path.replace('.json', '.docx')
 
     try:
-        with open(input_path, 'r', encoding='utf-8') as f:
+        with open(input_path, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
     except FileNotFoundError:
         print('错误: 找不到输入文件 ' + input_path); sys.exit(1)
