@@ -369,7 +369,7 @@ description: >
 }
 ```
 
-**content 字段支持两种类型（`text` 默认，含两种写法）**：
+**content 字段支持两种类型（`text` 默认，含两种写法）**： `type` 可省略：脚射器按 content 形状自动推断（串面 {header, rows} 对象数组会被自动识别为表格）；显式 type 与内容形状矛盾时脚射报错。
 - `type: "text"`（默认）：`"content": "字符串"` — 渲染为正文段落；或 `"content": [{"text":"...","bold":true/false,"indent":true/false}]` — 结构化段落列表
 - `type: "tables"`：`"content": [{"header":[...],"rows":[[...],...]}]` — 渲染带表头的表格
 
