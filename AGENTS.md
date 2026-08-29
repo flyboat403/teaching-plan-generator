@@ -23,7 +23,7 @@
 | 包 | 用途 |
 |----|------|
 | `python-docx` | DOCX 生成 + DOCX 参考材料读取（必需） |
-| `pdfplumber` / `PyMuPDF` | PDF 参考材料（首选/备选） |
+| `pypdf` / `PyMuPDF` | PDF 参考材料（首选/备选，pypdf 轻量、失败时再装 PyMuPDF） |
 | `pytesseract` + `Pillow` | 图片参考材料 OCR（需 Tesseract 引擎） |
 
 安装命令与解析回退链详见 SKILL.md § Dependencies 与 § Reference Material Processing。

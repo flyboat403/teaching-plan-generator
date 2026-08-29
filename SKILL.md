@@ -129,10 +129,10 @@ description: >
 
 | 文件格式 | 解析方式 |
 |----------|---------|
-| PDF | 首选 `pdfplumber`；失败或需版式信息时改用 `PyMuPDF`；两者都失败则提示用户改用其他工具转文本 |
+| PDF | 首选 `pypdf`；提取失败（扫描版/加密 PDF）时改用 `PyMuPDF`；仍失败则提示用户改用其他工具转文本 |
 | DOCX | 使用 `python-docx` 提取文本 |
 | MD / TXT | 直接读取 |
-| 图片 (JPG/PNG) | 首选 `pytesseract`（需本地 Tesseract 引擎及中文包 chi_sim）；引擎缺失或中文识别率低时改用 `EasyOCR`；对低置信度（<70%）或识别明显异常（大量乱码/缺字）的文本标注提醒 |
+| 图片 (JPG/PNG) | `pytesseract`（需本地 Tesseract 引擎及中文包 chi_sim）+ `Pillow` 预处理；对低置信度（<70%）或识别明显异常（大量乱码/缺字）的文本标注提醒 |
 
 **大文件分段读取**：参考材料较大时，每次只读取一部分（文本约 30-50 行 / PDF 若干页），按需定位关键章节，不要一次性读入全文，避免上下文溢出并确保信息完整取用。
 
@@ -408,8 +408,8 @@ description: >
 
 | 依赖 | 用途 | 安装命令 |
 |------|------|----------|
-| `python-docx` | DOCX 文件生成 + DOCX 参考材料读取 | `pip install python-docx` |
-| `pdfplumber` | PDF 参考材料文本提取（首选） | `pip install pdfplumber` |
-| `PyMuPDF` | PDF 参考材料文本提取（备选） | `pip install PyMuPDF` |
+| `python-docx` | DOCX 文件生成 + DOCX 参考材料读取（必需） | `pip install python-docx` |
+| `pypdf` | PDF 参考材料文本提取（首选，纯 Python 轻量包） | `pip install pypdf` |
+| `PyMuPDF` | PDF 提取备选，仅 pypdf 失败时按需安装 | `pip install PyMuPDF` |
 | `pytesseract` | 图片格式参考材料 OCR 识别 | `pip install pytesseract`（需安装 Tesseract 引擎） |
 | `Pillow` | 图片预处理（缩放、去噪） | `pip install Pillow` |
