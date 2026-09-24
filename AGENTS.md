@@ -9,6 +9,7 @@
 | `SKILL.md` | 技能定义：工作流、字段规则、学情决策树、模板加载、质量自检 |
 | `references/uniform-template.md` | 统一学情模板（4列表格）——学情无分层时加载 |
 | `references/layered-template.md` | 分层学情模板（5列表格，含分层标注）——学情分层时加载 |
+| `references/docx-style-spec.md` | DOCX 样式规范（页面/字体/表格/编号）——生成 DOCX 时遵循 |
 | `scripts/generate_docx.py` | DOCX 生成脚本——只通过 JSON 调用，NEVER 重写 |
 
 ## 仓库约定
