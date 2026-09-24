@@ -101,7 +101,7 @@ description: >
 
 **DOCX（仅此步加载，MD 预览阶段不要读）**：
 1. 版式唯一事实源：`references/docx-style-spec.md`（页面/字体/表格/页脚/章节序）
-2. **MANDATORY - READ ENTIRE FILE**：构造 JSON 前完整读取 `references/docx-json-contract.md`（结构、行类型、列宽、17 行表），**不要设置 range limit**
+2. **MANDATORY - READ ENTIRE FILE**：构造 JSON 前完整读取 `references/docx-json-contract.md`（结构、行类型、列宽、流程表行结构），**不要设置 range limit**
 3. 调用 `python3 scripts/generate_docx.py <input.json> [output.docx]`；`python-docx` 缺失则先 `pip install python-docx`
 4. 确认输出存在且大小 > 0；失败则按 json-contract 核对 JSON 后重试
 5. 成功后**立即删除**临时 JSON
@@ -331,7 +331,7 @@ description: >
 
 ### DOCX 输出
 
-- 调用方式、JSON 形状、行类型、列宽、17 行表：见 Step 4 加载的 `references/docx-json-contract.md`
+- 调用方式、JSON 形状、行类型、列宽、流程表行结构：见 Step 4 加载的 `references/docx-json-contract.md`
 - 版式（字体/底纹/页脚/章节序）：`references/docx-style-spec.md`
 - 结构差异摘要：DOCX = 无编号基础信息表（9×2）+ 12 个 Heading 1（一 学情分析 → 十二 教学反思）；MD = 21 字段编号
 
@@ -344,7 +344,7 @@ description: >
 - [ ] 全部 21 字段无遗漏，`{{占位符}}` 零残留
 - [ ] 章节顺序：学情分析在教学目标之前（MD 十/十一；DOCX 一/二）
 - [ ] 流程时间 = 10+3+10+3+10+4 = 40min；三模块递进、每模块有小结/提问
-- [ ] 教学方法与授课类型匹配；分层版四要素齐全
+- [ ] 教学方法与授课类型匹配；分层版四要素齐全，评价双列分值各自加总 = 100/100
 - [ ] DOCX 已生成且大小 > 0，临时 JSON 已删除
 - [ ] DOCX 版式对照 `references/docx-style-spec.md` §8 全项通过（含列宽合计 15.0cm、表头底纹、纯黑标题、页脚页码）
 
