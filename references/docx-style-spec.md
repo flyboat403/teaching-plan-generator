@@ -78,7 +78,6 @@ c.set(qn('w:val'), '000000')
 ```
 
 - 本规范未使用 Heading 2 / Heading 3；Word 默认的 Heading 2/3 仍为主题蓝 `#4F81BD`，若将来启用需一并改为黑色或另定色。
-- 用 `doc_insert_paragraph_with_text(idx=N, text="…", level=1)` 插入章节标题才能得到真正的 Heading 1；`doc_insert_markdown` 的 `# ` 只会产生 Normal + 22pt 大字加粗。
 
 ---
 
@@ -205,23 +204,25 @@ trPr.insert_element_before(tblHeader, 'w:cantSplit', 'w:trHeight')
 
 ## 6. 已知陷阱与实现要点
 
-| # | 陷阱 | 处理 |
-|---|------|------|
-| 1 | 字段标题继承 Heading 1 主题蓝 `#365F91` | 显式写 `w:color val="000000"`，并删除 `themeColor/themeShade/themeTint` |
-| 2 | python-docx 默认表格列宽均分 → 长文本列严重折行 | `autofit=False` + `w:tblLayout=fixed` + 逐列逐格设宽 |
-| 3 | 表头无底纹 | 加 `w:shd`，注意 `tcPr` 子元素顺序（见 §3） |
-| 4 | 表头跨页不重复 | `trPr` 加 `w:tblHeader`，同样注意元素顺序 |
-| 5 | 无页码 | 页脚加 `w:fldSimple`（`PAGE` / `NUMPAGES`） |
-| 6 | 板书树形图错位 | 行首缩进半角空格全部替换为 U+3000 |
-| 7 | **合并单元格会吞并空段落** | `cell.merge()` / `doc_merge_table_cells` 会把被并入格各自的空段落并进结果格，产生 N−1 个多余 ¶。判据：`len({id(c._tc) for c in row.cells}) < len(row.cells)`；清理后**必须复查**（本次定稿仍残留 1 处，已清） |
-| 8 | 相邻两张表被 Word 视觉合并 | 用 `pageBreakBefore` 或插入空段落分隔 |
-| 9 | 多学时连堂 | 每学时一张流程表，第二张首行 `page_break_before=True` |
-| 10 | 新插入段落继承单倍行距 | 用 `doc_modify_paragraph` 对 ranges 补 `line_spacing=1.5, line_spacing_rule=1` |
-| 11 | `doc_set_table_cells` 的 `text_format` 字段名是 **`font_size`**（不是 `font_size_pt`） | 键名写错会报 `[-16] … no effective operations` 或被静默忽略；可用 `font_size / font_family / bold / color`，对齐用顶层 `horizontal_align` |
-| 12 | 只传 `text` 替换单元格会丢字号 | 需随后用 `text_format:{"font_size":…}` 补回，否则该格回落到默认字号 |
-| 13 | `doc_delete_paragraph` 在表格单元格内不可靠 | 同一 idx 连调 3 次可能只生效 2 次；单元格内清段落改用 python-docx 脚本一次做完 |
-| 14 | `save_file` 省略 `file_path` 不落盘 | file_id 为 UUID 时必须 `save_file file_id=<uuid> file_path=<原绝对路径>`，并用 mtime + 重新读取双重确认 |
-| 15 | 文件已被编辑器打开时改盘 | 先 `close_file --json '{"file_id":"…","force":true}'` |
+**路径划分**：#1–#10 适用本技能标准路径（`generate_docx.py` 读 JSON 写 DOCX）；#11–#15 仅适用**交互式编辑已有 DOCX** 的工具路径（本技能生成流程不会调用 `doc_set_table_cells` / `save_file` / `close_file`，可跳过）。
+
+| # | 适用路径 | 陷阱 | 处理 |
+|---|---------|------|------|
+| 1 | 脚本生成 | 字段标题继承 Heading 1 主题蓝 `#365F91` | 显式写 `w:color val="000000"`，并删除 `themeColor/themeShade/themeTint` |
+| 2 | 脚本生成 | python-docx 默认表格列宽均分 → 长文本列严重折行 | `autofit=False` + `w:tblLayout=fixed` + 逐列逐格设宽 |
+| 3 | 脚本生成 | 表头无底纹 | 加 `w:shd`，注意 `tcPr` 子元素顺序（见 §3） |
+| 4 | 脚本生成 | 表头跨页不重复 | `trPr` 加 `w:tblHeader`，同样注意元素顺序 |
+| 5 | 脚本生成 | 无页码 | 页脚加 `w:fldSimple`（`PAGE` / `NUMPAGES`） |
+| 6 | 脚本生成 | 板书树形图错位 | 行首缩进半角空格全部替换为 U+3000 |
+| 7 | 脚本生成 | **合并单元格会吞并空段落** | `cell.merge()` 会把被并入格各自的空段落并进结果格，产生 N−1 个多余 ¶；判据：`len({id(c._tc) for c in row.cells}) < len(row.cells)`；清理后必须复查 |
+| 8 | 脚本生成 | 相邻两张表被 Word 视觉合并 | 用 `pageBreakBefore` 或插入空段落分隔 |
+| 9 | 脚本生成 | 多学时连堂 | 每学时一张流程表，第二张首行 `page_break_before=True` |
+| 10 | 脚本生成 | 新插入段落继承单倍行距 | 对正文段补 `line_spacing=1.5` |
+| 11 | 交互编辑 | `doc_set_table_cells` 的 `text_format` 字段名是 **`font_size`**（不是 `font_size_pt`） | 键名写错会报 `[-16] … no effective operations` 或被静默忽略 |
+| 12 | 交互编辑 | 只传 `text` 替换单元格会丢字号 | 需随后用 `text_format:{"font_size":…}` 补回 |
+| 13 | 交互编辑 | `doc_delete_paragraph` 在表格单元格内不可靠 | 单元格内清段落改用 python-docx 脚本一次做完 |
+| 14 | 交互编辑 | `save_file` 省略 `file_path` 不落盘 | 必须显式 `file_path=`，并用 mtime + 重新读取双重确认 |
+| 15 | 交互编辑 | 文件已被编辑器打开时改盘 | 先 `close_file` force 关闭再写 |
 
 ---
 

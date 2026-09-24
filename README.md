@@ -80,7 +80,8 @@ teaching-plan-generator/
 ├── references/
 │   ├── uniform-template.md           # 统一学情模板（4 列表格）
 │   ├── layered-template.md           # 分层学情模板（5 列表格，含分层标注）
-│   └── docx-style-spec.md            # DOCX 样式规范（页面/字体/表格/页码）
+│   ├── docx-style-spec.md            # DOCX 样式规范（页面/字体/表格/页码）
+│   └── docx-json-contract.md         # DOCX JSON 契约（结构/行类型/列宽）
 └── scripts/
     └── generate_docx.py              # DOCX 生成脚本（仅通过 JSON 调用）
 ```
@@ -88,7 +89,7 @@ teaching-plan-generator/
 ## 输出结构说明
 
 - **MD**：21 个编号字段（十 学情分析 → 十一 教学目标 → … → 二十一 教学反思）
-- **DOCX**：无编号基础信息表（9 行 × 2 列）+ 12 个 Heading 1 章节（一 学情分析 → 十二 教学反思）；版式遵循 `references/docx-style-spec.md`
+- **DOCX**：无编号基础信息表（9 行 × 2 列）+ 12 个 Heading 1 章节（一 学情分析 → 十二 教学反思）；JSON 形状见 `references/docx-json-contract.md`，版式见 `references/docx-style-spec.md`
 
 ## 开发约定
 

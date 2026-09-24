@@ -622,7 +622,7 @@ if __name__ == '__main__':
         print('错误: 找不到输入文件 ' + input_path)
         sys.exit(1)
     except json.JSONDecodeError as e:
-        print('错误: JSON 非法 (%s, 第%d行第%d列)，请核对 Output Format Spec'
+        print('错误: JSON 非法 (%s, 第%d行第%d列)，请核对 references/docx-json-contract.md'
               % (e.msg, e.lineno, e.colno))
         sys.exit(1)
 
@@ -630,7 +630,7 @@ if __name__ == '__main__':
         print('错误: JSON 根必须是对象')
         sys.exit(1)
     if 'fields' in data and 'sections' not in data:
-        print('错误: 旧版 fields 结构已废弃，请改用 basic_info + sections（见 Output Format Spec）')
+        print('错误: 旧版 fields 结构已废弃，请改用 basic_info + sections（见 references/docx-json-contract.md）')
         sys.exit(1)
     if not isinstance(data.get('sections'), list) or not data['sections']:
         print('错误: sections 必须是包含至少一个元素的数组')
